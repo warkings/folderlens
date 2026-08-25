@@ -32,7 +32,7 @@ FolderLens está pensado para esas bibliotecas llenas de carpetas con nombres pa
 2. Cloná el repositorio y entrá en la carpeta:
 
    ```powershell
-   git clone https://github.com/<tu-usuario>/folderlens.git
+   git clone https://github.com/warkings/folderlens.git
    cd folderlens
    ```
 
