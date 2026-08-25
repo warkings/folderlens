@@ -25,6 +25,8 @@ public partial class MainWindow : Window
     private const int WmKeyUp = 0x0101;
     private const int WmSysKeyDown = 0x0104;
     private const int WmSysKeyUp = 0x0105;
+    private const int VkC = 0x43;
+    private const uint KeyEventfKeyUp = 0x0002;
 
     private readonly ObservableCollection<FolderEntry> _visibleFolders = [];
     private readonly IndexCacheStore _cache = new();
@@ -87,7 +89,7 @@ public partial class MainWindow : Window
         }
         else if (showOnStartup)
         {
-            Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(ShowSearchWindow));
+            Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() => ShowSearchWindow()));
         }
         else
         {
@@ -134,12 +136,12 @@ public partial class MainWindow : Window
         if (e.Button == Forms.MouseButtons.Left) ShowSearchWindow();
     }
 
-    private void ShowSearchWindow()
+    private void ShowSearchWindow(string? initialQuery = null)
     {
         _opening = true;
         Show();
         WindowState = WindowState.Normal;
-        SearchBox.Clear();
+        SearchBox.Text = initialQuery ?? string.Empty;
         ApplyFilter();
         Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
         {
@@ -150,6 +152,50 @@ public partial class MainWindow : Window
         }));
     }
 
+    private async Task ShowSearchWindowFromSelectionAsync()
+    {
+        var attempts = 0;
+        while (IsAnyHotkeyModifierDown() && attempts++ < 32)
+            await Task.Delay(10);
+        var selectedText = await CaptureSelectedTextAsync();
+        ShowSearchWindow(selectedText);
+    }
+    private async Task<string?> CaptureSelectedTextAsync()
+    {
+        var currentHandle = new WindowInteropHelper(this).Handle;
+        if (currentHandle != IntPtr.Zero && NativeMethods.GetForegroundWindow() == currentHandle)
+            return null;
+        System.Windows.IDataObject? previousClipboard = null;
+        try
+        {
+            previousClipboard = System.Windows.Clipboard.GetDataObject();
+            System.Windows.Clipboard.Clear();
+            NativeMethods.SendCtrlC();
+            await Task.Delay(45);
+            return NormalizeSelectedText(System.Windows.Clipboard.ContainsText()
+                ? System.Windows.Clipboard.GetText(System.Windows.TextDataFormat.UnicodeText)
+                : null);
+        }
+        catch
+        {
+            return null;
+        }
+        finally
+        {
+            try
+            {
+                if (previousClipboard is not null) System.Windows.Clipboard.SetDataObject(previousClipboard);
+                else System.Windows.Clipboard.Clear();
+            }
+            catch { }
+        }
+    }
+    private static string? NormalizeSelectedText(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return null;
+        var normalized = string.Join(" ", text.Split([' ', '\r', '\n', '\t'], StringSplitOptions.RemoveEmptyEntries));
+        return normalized.Length == 0 ? null : normalized[..Math.Min(normalized.Length, 160)];
+    }
     private void FocusSearchBoxWhenReady()
     {
         var attempts = 0;
@@ -560,7 +606,7 @@ public partial class MainWindow : Window
             if (isHotkeyDown && !_hotkeyHandled && HotkeyModifiersMatch(hotkey.Modifiers))
             {
                 _hotkeyHandled = true;
-                Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(ShowSearchWindow));
+                Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() => _ = ShowSearchWindowFromSelectionAsync()));
                 return new IntPtr(1);
             }
 
@@ -625,6 +671,16 @@ public partial class MainWindow : Window
         public delegate IntPtr LowLevelKeyboardProc(int code, IntPtr wParam, IntPtr lParam);
         public delegate IntPtr LowLevelMouseProc(int code, IntPtr wParam, IntPtr lParam);
 
+        public static void SendCtrlC()
+        {
+            keybd_event((byte)VkLeftControl, 0, 0, UIntPtr.Zero);
+            keybd_event(VkC, 0, 0, UIntPtr.Zero);
+            keybd_event(VkC, 0, KeyEventfKeyUp, UIntPtr.Zero);
+            keybd_event((byte)VkLeftControl, 0, KeyEventfKeyUp, UIntPtr.Zero);
+        }
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern void keybd_event(byte virtualKey, byte scanCode, uint flags, UIntPtr extraInfo);
         [DllImport("user32.dll", SetLastError = true)]
         public static extern IntPtr SetWindowsHookEx(int idHook, LowLevelKeyboardProc callback, IntPtr moduleHandle, uint threadId);
 
