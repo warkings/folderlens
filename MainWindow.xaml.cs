@@ -686,15 +686,23 @@ public partial class MainWindow : Window
             SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<NativeInput>());
         }
         private static NativeInput CreateKeyboardInput(byte virtualKey, uint flags) =>
-            new() { Type = 1, Keyboard = new NativeKeyboardInput { VirtualKey = virtualKey, Flags = flags, ExtraInfo = UIntPtr.Zero } };
+            new() { Type = 1, Data = new NativeInputUnion { Keyboard = new NativeKeyboardInput { VirtualKey = virtualKey, Flags = flags, ExtraInfo = UIntPtr.Zero } } };
 
-        [StructLayout(LayoutKind.Sequential)]
+        [StructLayout(LayoutKind.Explicit, Size = 40)]
         private struct NativeInput
         {
+            [FieldOffset(0)]
             public uint Type;
-            public NativeKeyboardInput Keyboard;
+            [FieldOffset(8)]
+            public NativeInputUnion Data;
         }
 
+        [StructLayout(LayoutKind.Explicit, Size = 32)]
+        private struct NativeInputUnion
+        {
+            [FieldOffset(0)]
+            public NativeKeyboardInput Keyboard;
+        }
         [StructLayout(LayoutKind.Sequential)]
         private struct NativeKeyboardInput
         {
