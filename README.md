@@ -14,6 +14,12 @@
 
 FolderLens está pensado para esas bibliotecas llenas de carpetas con nombres parecidos: referencias, proyectos, recursos, fotos o material de trabajo. En vez de abrir una carpeta tras otra, usás el atajo global —`Alt + Espacio` por defecto—, escribís y reconocés el contenido de un vistazo. La interfaz detecta automáticamente el idioma de Windows y ofrece español, inglés, chino mandarín, hindi, francés, árabe, bengalí, portugués, ruso e indonesio.
 
+## English
+
+FolderLens is a fast, lightweight visual folder searcher for Windows. Press the global shortcut, type a folder name, and preview the images inside each result without opening folders one by one. It searches only the roots you configure, supports a customizable hotkey, and detects the Windows UI language automatically with ten embedded translations.
+
+The latest release includes both a small framework-dependent build and a standalone Windows x64 executable that requires no separate .NET installation.
+
 > El hero de arriba es una imagen conceptual de presentación. La aplicación real es una ventana WPF nativa y liviana.
 
 ## Descargar
