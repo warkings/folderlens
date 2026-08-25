@@ -171,10 +171,13 @@ public partial class MainWindow : Window
             previousClipboard = System.Windows.Clipboard.GetDataObject();
             System.Windows.Clipboard.Clear();
             NativeMethods.SendCtrlC();
-            await Task.Delay(45);
-            return NormalizeSelectedText(System.Windows.Clipboard.ContainsText()
-                ? System.Windows.Clipboard.GetText(System.Windows.TextDataFormat.UnicodeText)
-                : null);
+            for (var attempt = 0; attempt < 12; attempt++)
+            {
+                if (System.Windows.Clipboard.ContainsText())
+                    return NormalizeSelectedText(System.Windows.Clipboard.GetText(System.Windows.TextDataFormat.UnicodeText));
+                await Task.Delay(25);
+            }
+            return null;
         }
         catch
         {
@@ -673,14 +676,36 @@ public partial class MainWindow : Window
 
         public static void SendCtrlC()
         {
-            keybd_event((byte)VkLeftControl, 0, 0, UIntPtr.Zero);
-            keybd_event(VkC, 0, 0, UIntPtr.Zero);
-            keybd_event(VkC, 0, KeyEventfKeyUp, UIntPtr.Zero);
-            keybd_event((byte)VkLeftControl, 0, KeyEventfKeyUp, UIntPtr.Zero);
+            var inputs = new[]
+            {
+                CreateKeyboardInput((byte)VkLeftControl, 0),
+                CreateKeyboardInput(VkC, 0),
+                CreateKeyboardInput(VkC, KeyEventfKeyUp),
+                CreateKeyboardInput((byte)VkLeftControl, KeyEventfKeyUp)
+            };
+            SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<NativeInput>());
+        }
+        private static NativeInput CreateKeyboardInput(byte virtualKey, uint flags) =>
+            new() { Type = 1, Keyboard = new NativeKeyboardInput { VirtualKey = virtualKey, Flags = flags, ExtraInfo = UIntPtr.Zero } };
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct NativeInput
+        {
+            public uint Type;
+            public NativeKeyboardInput Keyboard;
         }
 
+        [StructLayout(LayoutKind.Sequential)]
+        private struct NativeKeyboardInput
+        {
+            public ushort VirtualKey;
+            public ushort ScanCode;
+            public uint Flags;
+            public uint Time;
+            public UIntPtr ExtraInfo;
+        }
         [DllImport("user32.dll", SetLastError = true)]
-        private static extern void keybd_event(byte virtualKey, byte scanCode, uint flags, UIntPtr extraInfo);
+        private static extern uint SendInput(uint inputCount, NativeInput[] inputs, int inputSize);
         [DllImport("user32.dll", SetLastError = true)]
         public static extern IntPtr SetWindowsHookEx(int idHook, LowLevelKeyboardProc callback, IntPtr moduleHandle, uint threadId);
 
