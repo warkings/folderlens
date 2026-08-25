@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Input;
@@ -37,6 +38,10 @@ public partial class MainWindow : Window
     private IntPtr _keyboardHook;
     private IntPtr _mouseHook;
     private PreviewState? _previewState;
+    private readonly DispatcherTimer _previewHoverTimer;
+    private FolderEntry? _pendingPreviewFolder;
+    private readonly List<FileSystemWatcher> _indexWatchers = [];
+    private DispatcherTimer? _indexRefreshTimer;
     private bool _allowExit;
     private bool _loaded;
     private bool _suppressDeactivate;
@@ -48,6 +53,11 @@ public partial class MainWindow : Window
         InitializeComponent();
         ApplyLocalization();
         ResultsListBox.ItemsSource = _visibleFolders;
+        _previewHoverTimer = new DispatcherTimer(DispatcherPriority.Background)
+        {
+            Interval = TimeSpan.FromMilliseconds(120)
+        };
+        _previewHoverTimer.Tick += PreviewHoverTimer_Tick;
         _keyboardProc = KeyboardHookCallback;
         _mouseProc = MouseHookCallback;
     }
@@ -89,6 +99,7 @@ public partial class MainWindow : Window
             _allFolders = cachedFolders;
             ApplyFilter();
         }
+        ConfigureIndexWatchers();
         RefreshIndexAsync();
     }
 
@@ -222,6 +233,52 @@ public partial class MainWindow : Window
         catch (OperationCanceledException) { }
     }
 
+    private void ConfigureIndexWatchers()
+    {
+        foreach (var watcher in _indexWatchers) watcher.Dispose();
+        _indexWatchers.Clear();
+        foreach (var root in App.Settings.Current.SearchRoots.Where(Directory.Exists).Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            try
+            {
+                var watcher = new FileSystemWatcher(root)
+                {
+                    IncludeSubdirectories = true,
+                    NotifyFilter = NotifyFilters.DirectoryName
+                };
+                watcher.Created += IndexWatcher_Changed;
+                watcher.Deleted += IndexWatcher_Changed;
+                watcher.Renamed += IndexWatcher_Renamed;
+                watcher.EnableRaisingEvents = true;
+                _indexWatchers.Add(watcher);
+            }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
+    }
+    private void IndexWatcher_Changed(object sender, FileSystemEventArgs e) =>
+        Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(ScheduleIndexRefresh));
+
+    private void IndexWatcher_Renamed(object sender, RenamedEventArgs e) =>
+        Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(ScheduleIndexRefresh));
+
+    private void ScheduleIndexRefresh()
+    {
+        if (_indexRefreshTimer is null)
+        {
+            _indexRefreshTimer = new DispatcherTimer(DispatcherPriority.Background)
+            {
+                Interval = TimeSpan.FromMilliseconds(650)
+            };
+            _indexRefreshTimer.Tick += (_, _) =>
+            {
+                _indexRefreshTimer.Stop();
+                RefreshIndexAsync();
+            };
+        }
+        _indexRefreshTimer.Stop();
+        _indexRefreshTimer.Start();
+    }
     private void SearchBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
     {
         SearchHint.Visibility = string.IsNullOrWhiteSpace(SearchBox.Text) ? Visibility.Visible : Visibility.Collapsed;
@@ -239,6 +296,7 @@ public partial class MainWindow : Window
         var limited = matches.Take(250).ToArray();
         _visibleFolders.Clear();
         foreach (var folder in limited) _visibleFolders.Add(folder);
+        UpdateResultsHeight(limited.Length);
         ResultCountText.Text = Localization.FolderCount(matches.Count);
 
         ResultsArea.Visibility = string.IsNullOrWhiteSpace(query) ? Visibility.Collapsed : Visibility.Visible;
@@ -282,6 +340,16 @@ public partial class MainWindow : Window
             EmptyTitle.Text = Localization.Get("main.emptyTypeTitle");
             EmptyMessage.Text = Localization.Get("main.emptyTypeMessage");
         }
+
+    }
+    private void UpdateResultsHeight(int resultCount)
+    {
+        const double rowHeight = 68;
+        const double maxHeight = 390;
+        var height = resultCount == 0
+            ? 144
+            : Math.Min(maxHeight, resultCount * rowHeight);
+        ResultsListRow.Height = new GridLength(height);
     }
 
     private void KeepWindowOnScreen()
@@ -299,9 +367,28 @@ public partial class MainWindow : Window
     private void Folder_MouseEnter(object sender, System.Windows.Input.MouseEventArgs e)
     {
         if (sender is not FrameworkElement element || element.DataContext is not FolderEntry folder) return;
-        _ = LoadFolderPreviewAsync(folder);
+        _pendingPreviewFolder = folder;
+        _previewHoverTimer.Stop();
+        _previewHoverTimer.Start();
     }
 
+    private void Folder_MouseLeave(object sender, System.Windows.Input.MouseEventArgs e)
+    {
+        if (sender is FrameworkElement element && element.DataContext is FolderEntry folder
+            && string.Equals(_pendingPreviewFolder?.Path, folder.Path, StringComparison.OrdinalIgnoreCase))
+        {
+            _pendingPreviewFolder = null;
+            _previewHoverTimer.Stop();
+        }
+    }
+    private void PreviewHoverTimer_Tick(object? sender, EventArgs e)
+    {
+        _previewHoverTimer.Stop();
+        var folder = _pendingPreviewFolder;
+        _pendingPreviewFolder = null;
+        if (folder is not null)
+            _ = LoadFolderPreviewAsync(folder);
+    }
     private async Task LoadFolderPreviewAsync(FolderEntry folder)
     {
         _previewCts?.Cancel();
@@ -364,6 +451,7 @@ public partial class MainWindow : Window
             var dialog = new SettingsWindow(this);
             if (dialog.ShowDialog() != true || dialog.Result is null) return;
             App.Settings.Save(dialog.Result);
+            ConfigureIndexWatchers();
             _hotkeyHandled = false;
             App.Index.ClearPreviewCache();
             RefreshIndexAsync();
@@ -405,6 +493,10 @@ public partial class MainWindow : Window
             return;
         }
 
+        _previewHoverTimer.Stop();
+        _indexRefreshTimer?.Stop();
+        foreach (var watcher in _indexWatchers) watcher.Dispose();
+        _indexWatchers.Clear();
         UninstallKeyboardHook();
         UninstallMouseHook();
         _trayIcon?.Dispose();
