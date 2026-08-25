@@ -26,7 +26,7 @@
             <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="Auto" />
         </Grid.ColumnDefinitions>
-        <Border Grid.Column="0" x:Name="MainShell" Width="780" VerticalAlignment="Top" Background="{StaticResource ShellBrush}" BorderBrush="#425A5A" BorderThickness="1" CornerRadius="24">
+        <Border Grid.Column="0" x:Name="MainShell" Width="780" VerticalAlignment="Top" Background="{StaticResource ShellBrush}" BorderBrush="#425A5A" BorderThickness="1" CornerRadius="24" ClipToBounds="True">
         <Grid Margin="14">
             <Grid.RowDefinitions>
                 <RowDefinition Height="86" />
