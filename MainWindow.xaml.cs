@@ -165,21 +165,20 @@ public partial class MainWindow : Window
         var currentHandle = new WindowInteropHelper(this).Handle;
         if (sourceWindow == IntPtr.Zero || sourceWindow == currentHandle)
             return null;
-        NativeMethods.SetForegroundWindow(sourceWindow);
-        await Task.Delay(25);
+        NativeMethods.ActivateSourceWindow(sourceWindow);
+        await Task.Delay(40);
         System.Windows.IDataObject? previousClipboard = null;
         try
         {
             previousClipboard = System.Windows.Clipboard.GetDataObject();
             System.Windows.Clipboard.Clear();
             NativeMethods.SendCtrlC();
-            for (var attempt = 0; attempt < 12; attempt++)
-            {
-                if (System.Windows.Clipboard.ContainsText())
-                    return NormalizeSelectedText(System.Windows.Clipboard.GetText(System.Windows.TextDataFormat.UnicodeText));
-                await Task.Delay(25);
-            }
-            return null;
+            var selectedText = await WaitForClipboardTextAsync();
+            if (selectedText is not null) return selectedText;
+
+            System.Windows.Clipboard.Clear();
+            NativeMethods.SendCtrlC(useLegacyKeybdEvent: true);
+            return await WaitForClipboardTextAsync();
         }
         catch
         {
@@ -194,6 +193,16 @@ public partial class MainWindow : Window
             }
             catch { }
         }
+    }
+    private static async Task<string?> WaitForClipboardTextAsync()
+    {
+        for (var attempt = 0; attempt < 16; attempt++)
+        {
+            if (System.Windows.Clipboard.ContainsText())
+                return NormalizeSelectedText(System.Windows.Clipboard.GetText(System.Windows.TextDataFormat.UnicodeText));
+            await Task.Delay(25);
+        }
+        return null;
     }
     private static string? NormalizeSelectedText(string? text)
     {
@@ -677,17 +686,21 @@ public partial class MainWindow : Window
         public delegate IntPtr LowLevelKeyboardProc(int code, IntPtr wParam, IntPtr lParam);
         public delegate IntPtr LowLevelMouseProc(int code, IntPtr wParam, IntPtr lParam);
 
-        public static void SendCtrlC()
+        public static void SendCtrlC(bool useLegacyKeybdEvent = false)
         {
-            var inputs = new[]
+            if (!useLegacyKeybdEvent)
             {
-                CreateKeyboardInput((byte)VkLeftControl, 0),
-                CreateKeyboardInput(VkC, 0),
-                CreateKeyboardInput(VkC, KeyEventfKeyUp),
-                CreateKeyboardInput((byte)VkLeftControl, KeyEventfKeyUp)
-            };
-            var sent = SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<NativeInput>());
-            if (sent == inputs.Length) return;
+                var inputs = new[]
+                {
+                    CreateKeyboardInput((byte)VkLeftControl, 0),
+                    CreateKeyboardInput(VkC, 0),
+                    CreateKeyboardInput(VkC, KeyEventfKeyUp),
+                    CreateKeyboardInput((byte)VkLeftControl, KeyEventfKeyUp)
+                };
+                var sent = SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<NativeInput>());
+                if (sent == inputs.Length) return;
+            }
+
             keybd_event((byte)VkLeftControl, 0, 0, UIntPtr.Zero);
             keybd_event(VkC, 0, 0, UIntPtr.Zero);
             keybd_event(VkC, 0, KeyEventfKeyUp, UIntPtr.Zero);
@@ -746,6 +759,23 @@ public partial class MainWindow : Window
 
         [DllImport("user32.dll")]
         public static extern IntPtr GetForegroundWindow();
+
+        public static void ActivateSourceWindow(IntPtr handle)
+        {
+            var sourceThread = GetWindowThreadProcessId(handle, IntPtr.Zero);
+            var currentThread = GetCurrentThreadId();
+            var attached = sourceThread != 0 && sourceThread != currentThread
+                && AttachThreadInput(currentThread, sourceThread, true);
+            try
+            {
+                BringWindowToTop(handle);
+                SetForegroundWindow(handle);
+            }
+            finally
+            {
+                if (attached) AttachThreadInput(currentThread, sourceThread, false);
+            }
+        }
 
         [DllImport("user32.dll")]
         public static extern uint GetWindowThreadProcessId(IntPtr handle, IntPtr processId);
