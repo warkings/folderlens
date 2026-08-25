@@ -43,6 +43,8 @@ public partial class MainWindow : Window
     private PreviewState? _previewState;
     private readonly DispatcherTimer _previewHoverTimer;
     private FolderEntry? _pendingPreviewFolder;
+    private FolderEntry? _hoveredPreviewFolder;
+    private long _previewRequestId;
     private readonly List<FileSystemWatcher> _indexWatchers = [];
     private DispatcherTimer? _indexRefreshTimer;
     private bool _allowExit;
@@ -421,11 +423,11 @@ public partial class MainWindow : Window
         if (hasResults && !string.IsNullOrWhiteSpace(query))
         {
             ResultsListBox.SelectedIndex = 0;
-            _ = LoadFolderPreviewAsync(_visibleFolders[0]);
+            ResetPreviewState(Localization.Get("main.previewHover"));
         }
         else
         {
-            _previewCts?.Cancel();
+            ResetPreviewState(string.IsNullOrWhiteSpace(query) ? Localization.Get("main.previewHover") : Localization.Get("main.previewNoPhotos"));
             SetPreviewState(new PreviewState
             {
                 Message = string.IsNullOrWhiteSpace(query)
@@ -477,6 +479,12 @@ public partial class MainWindow : Window
     private void Folder_MouseEnter(object sender, System.Windows.Input.MouseEventArgs e)
     {
         if (sender is not FrameworkElement element || element.DataContext is not FolderEntry folder) return;
+        if (!string.Equals(_hoveredPreviewFolder?.Path, folder.Path, StringComparison.OrdinalIgnoreCase))
+        {
+            CancelPreviewLoad();
+            SetPreviewState(new PreviewState { Message = Localization.Get("main.previewHover") });
+        }
+        _hoveredPreviewFolder = folder;
         _pendingPreviewFolder = folder;
         _previewHoverTimer.Stop();
         _previewHoverTimer.Start();
@@ -485,10 +493,13 @@ public partial class MainWindow : Window
     private void Folder_MouseLeave(object sender, System.Windows.Input.MouseEventArgs e)
     {
         if (sender is FrameworkElement element && element.DataContext is FolderEntry folder
-            && string.Equals(_pendingPreviewFolder?.Path, folder.Path, StringComparison.OrdinalIgnoreCase))
+            && string.Equals(_hoveredPreviewFolder?.Path, folder.Path, StringComparison.OrdinalIgnoreCase))
         {
             _pendingPreviewFolder = null;
+            _hoveredPreviewFolder = null;
             _previewHoverTimer.Stop();
+            CancelPreviewLoad();
+            SetPreviewState(new PreviewState { Message = Localization.Get("main.previewHover") });
         }
     }
     private void PreviewHoverTimer_Tick(object? sender, EventArgs e)
@@ -496,12 +507,14 @@ public partial class MainWindow : Window
         _previewHoverTimer.Stop();
         var folder = _pendingPreviewFolder;
         _pendingPreviewFolder = null;
-        if (folder is not null)
+        if (folder is not null
+            && string.Equals(_hoveredPreviewFolder?.Path, folder.Path, StringComparison.OrdinalIgnoreCase))
             _ = LoadFolderPreviewAsync(folder);
     }
     private async Task LoadFolderPreviewAsync(FolderEntry folder)
     {
         _previewCts?.Cancel();
+        var requestId = ++_previewRequestId;
         _previewCts = new CancellationTokenSource();
         var token = _previewCts.Token;
         SetPreviewState(new PreviewState { Folder = folder, Message = Localization.Get("main.previewLoading") });
@@ -509,10 +522,29 @@ public partial class MainWindow : Window
         try
         {
             var state = await App.Index.LoadPreviewAsync(folder, token);
-            if (!token.IsCancellationRequested)
+            if (!token.IsCancellationRequested
+                && requestId == _previewRequestId && IsCurrentHoveredFolder(folder))
                 SetPreviewState(state);
         }
         catch (OperationCanceledException) { }
+    }
+
+    private bool IsCurrentHoveredFolder(FolderEntry folder) =>
+        string.Equals(_hoveredPreviewFolder?.Path, folder.Path, StringComparison.OrdinalIgnoreCase);
+
+    private void CancelPreviewLoad()
+    {
+        _previewRequestId++;
+        _previewCts?.Cancel();
+    }
+
+    private void ResetPreviewState(string message)
+    {
+        _previewHoverTimer.Stop();
+        _pendingPreviewFolder = null;
+        _hoveredPreviewFolder = null;
+        CancelPreviewLoad();
+        SetPreviewState(new PreviewState { Message = message });
     }
 
     private void SetPreviewState(PreviewState state)
