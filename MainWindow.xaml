@@ -32,8 +32,8 @@
                 <RowDefinition Height="86" />
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
-            <Ellipse Width="250" Height="250" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="-112,-126" Fill="{StaticResource LensGlowBrush}" IsHitTestVisible="False" />
-            <Ellipse Width="220" Height="220" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-125,-140" Fill="{StaticResource MintGlowBrush}" IsHitTestVisible="False" />
+            <Ellipse Width="164" Height="164" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="-58,-72" Fill="{StaticResource LensGlowBrush}" IsHitTestVisible="False" />
+            <Ellipse Width="148" Height="148" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-72,-82" Fill="{StaticResource MintGlowBrush}" IsHitTestVisible="False" />
 
             <Border Grid.Row="0" Height="72" Margin="4,7,4,0" Background="{StaticResource SearchBrush}" BorderBrush="#57716E" BorderThickness="1" CornerRadius="23">
                 <Grid Margin="16,0,12,0">
