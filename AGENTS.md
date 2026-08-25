@@ -32,6 +32,10 @@ Use four-space indentation, nullable reference types, file-scoped namespaces, an
 
 No automated test project or coverage requirement exists yet. Before submitting changes, build in Release and manually verify: the configured shortcut (default `Alt + Space`), search filtering, single-click folder opening, hover previews, settings persistence, localized strings, tray behavior, and startup with Windows.
 
+## Release Versioning
+
+Every user-facing improvement increments the semantic version in FolderLens.csproj (for example, 1.0.1 to 1.0.2). Update Version, AssemblyVersion, FileVersion, and InformationalVersion together. Publish versioned assets such as FolderLens-1.0.2.exe and FolderLens-1.0.2-win-x64.exe, create the matching v1.0.2 Git tag and GitHub release, and keep the lightweight versioned file under downloads/.
+
 ## Commit & Pull Request Guidelines
 
 No Git history is available in this checkout, so no existing convention can be inferred. Use concise imperative messages, preferably Conventional Commit style, such as `fix: open folders on single click`. PRs should describe behavior changes, include build/test results, and attach screenshots or a short recording for UI changes.
