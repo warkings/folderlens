@@ -152,19 +152,21 @@ public partial class MainWindow : Window
         }));
     }
 
-    private async Task ShowSearchWindowFromSelectionAsync()
+    private async Task ShowSearchWindowFromSelectionAsync(IntPtr sourceWindow)
     {
         var attempts = 0;
         while (IsAnyHotkeyModifierDown() && attempts++ < 32)
             await Task.Delay(10);
-        var selectedText = await CaptureSelectedTextAsync();
+        var selectedText = await CaptureSelectedTextAsync(sourceWindow);
         ShowSearchWindow(selectedText);
     }
-    private async Task<string?> CaptureSelectedTextAsync()
+    private async Task<string?> CaptureSelectedTextAsync(IntPtr sourceWindow)
     {
         var currentHandle = new WindowInteropHelper(this).Handle;
-        if (currentHandle != IntPtr.Zero && NativeMethods.GetForegroundWindow() == currentHandle)
+        if (sourceWindow == IntPtr.Zero || sourceWindow == currentHandle)
             return null;
+        NativeMethods.SetForegroundWindow(sourceWindow);
+        await Task.Delay(25);
         System.Windows.IDataObject? previousClipboard = null;
         try
         {
@@ -609,7 +611,8 @@ public partial class MainWindow : Window
             if (isHotkeyDown && !_hotkeyHandled && HotkeyModifiersMatch(hotkey.Modifiers))
             {
                 _hotkeyHandled = true;
-                Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() => _ = ShowSearchWindowFromSelectionAsync()));
+                var sourceWindow = NativeMethods.GetForegroundWindow();
+                Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() => _ = ShowSearchWindowFromSelectionAsync(sourceWindow)));
                 return new IntPtr(1);
             }
 
@@ -683,7 +686,12 @@ public partial class MainWindow : Window
                 CreateKeyboardInput(VkC, KeyEventfKeyUp),
                 CreateKeyboardInput((byte)VkLeftControl, KeyEventfKeyUp)
             };
-            SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<NativeInput>());
+            var sent = SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<NativeInput>());
+            if (sent == inputs.Length) return;
+            keybd_event((byte)VkLeftControl, 0, 0, UIntPtr.Zero);
+            keybd_event(VkC, 0, 0, UIntPtr.Zero);
+            keybd_event(VkC, 0, KeyEventfKeyUp, UIntPtr.Zero);
+            keybd_event((byte)VkLeftControl, 0, KeyEventfKeyUp, UIntPtr.Zero);
         }
         private static NativeInput CreateKeyboardInput(byte virtualKey, uint flags) =>
             new() { Type = 1, Data = new NativeInputUnion { Keyboard = new NativeKeyboardInput { VirtualKey = virtualKey, Flags = flags, ExtraInfo = UIntPtr.Zero } } };
@@ -714,6 +722,8 @@ public partial class MainWindow : Window
         }
         [DllImport("user32.dll", SetLastError = true)]
         private static extern uint SendInput(uint inputCount, NativeInput[] inputs, int inputSize);
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern void keybd_event(byte virtualKey, byte scanCode, uint flags, UIntPtr extraInfo);
         [DllImport("user32.dll", SetLastError = true)]
         public static extern IntPtr SetWindowsHookEx(int idHook, LowLevelKeyboardProc callback, IntPtr moduleHandle, uint threadId);
 
