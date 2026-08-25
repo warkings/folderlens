@@ -4,12 +4,12 @@
 
 FolderLens is a Windows WPF application targeting .NET 8. Source files live at the repository root:
 
-- `MainWindow.xaml` and `MainWindow.xaml.cs`: floating search palette, tray integration, hotkey, and interactions.
+- `MainWindow.xaml` and `MainWindow.xaml.cs`: floating search palette, tray integration, hotkey, localization, and interactions.
 - `SettingsWindow.xaml(.cs)`: folder and startup configuration UI.
 - `FolderIndexService.cs`: background folder indexing and lazy image previews.
 - `IndexCacheStore.cs` and `SettingsStore.cs`: local persistence under `%APPDATA%\FolderLens`.
 - `FolderLens.ico`: native application and tray icon resource.
-- `Models.cs`, `App.xaml(.cs)`, and `FolderLens.csproj`: shared models, application startup, and project configuration.
+- `Models.cs`, `App.xaml(.cs)`, `Localization/*.cs`, and `FolderLens.csproj`: shared models, startup, localization, and project configuration.
 
 `bin/`, `obj/`, `publish/`, and `.dotnet-cli/` are generated or local-only directories. There is currently no test directory.
 
@@ -22,7 +22,7 @@ dotnet run
 dotnet publish FolderLens.csproj --configuration Release --runtime win-x64 --self-contained false --property:PublishSingleFile=true --output publish
 ```
 
-Use `dotnet run` for local development. The published executable requires the .NET 8 Windows Desktop runtime.
+Use `dotnet run` for local development. The published executable requires the .NET 8 Windows Desktop runtime. Localization is embedded and selects the Windows UI culture automatically, falling back to Spanish.
 
 ## Coding Style & Naming Conventions
 
@@ -30,7 +30,7 @@ Use four-space indentation, nullable reference types, file-scoped namespaces, an
 
 ## Testing Guidelines
 
-No automated test project or coverage requirement exists yet. Before submitting changes, build in Release and manually verify: `Alt + Space`, search filtering, single-click folder opening, hover previews, settings persistence, tray behavior, and startup with Windows.
+No automated test project or coverage requirement exists yet. Before submitting changes, build in Release and manually verify: the configured shortcut (default `Alt + Space`), search filtering, single-click folder opening, hover previews, settings persistence, localized strings, tray behavior, and startup with Windows.
 
 ## Commit & Pull Request Guidelines
 

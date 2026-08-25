@@ -7,11 +7,40 @@
         <SolidColorBrush x:Key="PanelBrush" Color="#151E23" />
         <SolidColorBrush x:Key="PanelSoftBrush" Color="#1A252B" />
         <SolidColorBrush x:Key="LineBrush" Color="#2B373D" />
+        <SolidColorBrush x:Key="HairlineBrush" Color="#42535A" />
+        <SolidColorBrush x:Key="GlassBrush" Color="#D8172328" />
+        <SolidColorBrush x:Key="GlassDeepBrush" Color="#E40D171C" />
         <SolidColorBrush x:Key="TextBrush" Color="#EEF4F0" />
         <SolidColorBrush x:Key="MutedBrush" Color="#91A09F" />
         <SolidColorBrush x:Key="AccentBrush" Color="#66E4CF" />
         <SolidColorBrush x:Key="AccentSoftBrush" Color="#193F3C" />
         <SolidColorBrush x:Key="WarmBrush" Color="#FFB46A" />
+        <SolidColorBrush x:Key="WarmSoftBrush" Color="#3B704323" />
+
+        <LinearGradientBrush x:Key="ShellBrush" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#182329" Offset="0" />
+            <GradientStop Color="#0D151A" Offset="0.48" />
+            <GradientStop Color="#17221F" Offset="1" />
+        </LinearGradientBrush>
+        <LinearGradientBrush x:Key="SearchBrush" StartPoint="0,0" EndPoint="1,0">
+            <GradientStop Color="#18252A" Offset="0" />
+            <GradientStop Color="#142126" Offset="0.56" />
+            <GradientStop Color="#25221D" Offset="1" />
+        </LinearGradientBrush>
+        <LinearGradientBrush x:Key="ResultBrush" StartPoint="0,0" EndPoint="1,1">
+            <GradientStop Color="#1B292E" Offset="0" />
+            <GradientStop Color="#142025" Offset="1" />
+        </LinearGradientBrush>
+        <RadialGradientBrush x:Key="LensGlowBrush" Center="0.5,0.5" GradientOrigin="0.5,0.5" RadiusX="0.5" RadiusY="0.5">
+            <GradientStop Color="#5EFFB46A" Offset="0" />
+            <GradientStop Color="#1AFFB46A" Offset="0.38" />
+            <GradientStop Color="#00FFB46A" Offset="1" />
+        </RadialGradientBrush>
+        <RadialGradientBrush x:Key="MintGlowBrush" Center="0.5,0.5" GradientOrigin="0.5,0.5" RadiusX="0.5" RadiusY="0.5">
+            <GradientStop Color="#4C66E4CF" Offset="0" />
+            <GradientStop Color="#1566E4CF" Offset="0.45" />
+            <GradientStop Color="#0066E4CF" Offset="1" />
+        </RadialGradientBrush>
         <Style TargetType="TextBlock">
             <Setter Property="FontFamily" Value="Segoe UI Variable Text, Segoe UI" />
             <Setter Property="Foreground" Value="{StaticResource TextBrush}" />

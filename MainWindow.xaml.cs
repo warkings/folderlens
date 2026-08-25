@@ -14,7 +14,12 @@ public partial class MainWindow : Window
 {
     private const int VkLeftAlt = 0xA4;
     private const int VkRightAlt = 0xA5;
-    private const uint VkSpace = 0x20;
+    private const int VkLeftControl = 0xA2;
+    private const int VkRightControl = 0xA3;
+    private const int VkLeftShift = 0xA0;
+    private const int VkRightShift = 0xA1;
+    private const int VkLeftWindows = 0x5B;
+    private const int VkRightWindows = 0x5C;
     private const int WmKeyDown = 0x0100;
     private const int WmKeyUp = 0x0101;
     private const int WmSysKeyDown = 0x0104;
@@ -36,14 +41,23 @@ public partial class MainWindow : Window
     private bool _loaded;
     private bool _suppressDeactivate;
     private bool _opening;
-    private bool _spaceHandled;
+    private bool _hotkeyHandled;
 
     public MainWindow()
     {
         InitializeComponent();
+        ApplyLocalization();
         ResultsListBox.ItemsSource = _visibleFolders;
         _keyboardProc = KeyboardHookCallback;
         _mouseProc = MouseHookCallback;
+    }
+
+    private void ApplyLocalization()
+    {
+        SearchHint.Text = Localization.Get("main.searchHint");
+        ResultsHeaderText.Text = Localization.Get("main.resultsHeader");
+        EmptyTitle.Text = Localization.Get("main.emptyNoMatchTitle");
+        EmptyMessage.Text = Localization.Get("main.emptyNoMatchMessage");
     }
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
@@ -53,7 +67,22 @@ public partial class MainWindow : Window
         ConfigureTrayIcon();
         InstallKeyboardHook();
         InstallMouseHook();
-        Hide();
+        var arguments = Environment.GetCommandLineArgs().Skip(1).ToArray();
+        var showSettingsOnStartup = arguments.Any(argument => string.Equals(argument, "--settings", StringComparison.OrdinalIgnoreCase));
+        var showOnStartup = arguments.Any(argument => string.Equals(argument, "--show", StringComparison.OrdinalIgnoreCase));
+        if (showSettingsOnStartup)
+        {
+            Hide();
+            Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(OpenSettings));
+        }
+        else if (showOnStartup)
+        {
+            Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(ShowSearchWindow));
+        }
+        else
+        {
+            Hide();
+        }
         var cachedFolders = _cache.TryLoad(App.Settings.Current.SearchRoots);
         if (cachedFolders.Count > 0)
         {
@@ -76,16 +105,16 @@ public partial class MainWindow : Window
         _trayIcon = new Forms.NotifyIcon
         {
             Icon = _applicationIcon ?? System.Drawing.SystemIcons.Application,
-            Text = "FolderLens · buscador de carpetas",
+            Text = Localization.Get("tray.tooltip"),
             Visible = true
         };
         _trayIcon.MouseClick += TrayIcon_MouseClick;
         var menu = new Forms.ContextMenuStrip();
-        menu.Items.Add("Abrir buscador", null, (_, _) => ShowSearchWindow());
-        menu.Items.Add("Actualizar índice", null, (_, _) => RefreshIndexAsync());
-        menu.Items.Add("Configuración", null, (_, _) => OpenSettings());
+        menu.Items.Add(Localization.Get("tray.open"), null, (_, _) => ShowSearchWindow());
+        menu.Items.Add(Localization.Get("tray.refresh"), null, (_, _) => RefreshIndexAsync());
+        menu.Items.Add(Localization.Get("tray.settings"), null, (_, _) => OpenSettings());
         menu.Items.Add(new Forms.ToolStripSeparator());
-        menu.Items.Add("Salir", null, (_, _) => ExitApplication());
+        menu.Items.Add(Localization.Get("tray.exit"), null, (_, _) => ExitApplication());
         _trayIcon.ContextMenuStrip = menu;
     }
 
@@ -120,7 +149,7 @@ public partial class MainWindow : Window
         timer.Tick += (_, _) =>
         {
             attempts++;
-            if (IsAltDown() && attempts < 32) return;
+            if (IsAnyHotkeyModifierDown() && attempts < 32) return;
 
             timer.Stop();
             ForceWindowToForeground();
@@ -210,37 +239,75 @@ public partial class MainWindow : Window
         var limited = matches.Take(250).ToArray();
         _visibleFolders.Clear();
         foreach (var folder in limited) _visibleFolders.Add(folder);
-        ResultCountText.Text = matches.Count == 1 ? "1 carpeta" : $"{matches.Count:N0} carpetas";
+        ResultCountText.Text = Localization.FolderCount(matches.Count);
 
         ResultsArea.Visibility = string.IsNullOrWhiteSpace(query) ? Visibility.Collapsed : Visibility.Visible;
 
         var hasResults = _visibleFolders.Count > 0;
+        var showPreview = hasResults && !string.IsNullOrWhiteSpace(query);
+        PreviewPanel.Visibility = showPreview ? Visibility.Visible : Visibility.Collapsed;
+        PreviewGap.Visibility = showPreview ? Visibility.Visible : Visibility.Collapsed;
+        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(KeepWindowOnScreen));
+
+
+        if (hasResults && !string.IsNullOrWhiteSpace(query))
+        {
+            ResultsListBox.SelectedIndex = 0;
+            _ = LoadFolderPreviewAsync(_visibleFolders[0]);
+        }
+        else
+        {
+            _previewCts?.Cancel();
+            SetPreviewState(new PreviewState
+            {
+                Message = string.IsNullOrWhiteSpace(query)
+                    ? Localization.Get("main.previewHover")
+                    : Localization.Get("main.previewNoPhotos")
+            });
+        }
         EmptyState.Visibility = hasResults ? Visibility.Collapsed : Visibility.Visible;
         ResultsListBox.Visibility = hasResults ? Visibility.Visible : Visibility.Collapsed;
         if (_allFolders.Count == 0)
         {
-            EmptyTitle.Text = "Elegí tus carpetas de búsqueda";
-            EmptyMessage.Text = "Agregá una carpeta desde Configuración. FolderLens buscará dentro de ella sin tocar el resto de tu PC.";
+            EmptyTitle.Text = Localization.Get("main.emptyChooseTitle");
+            EmptyMessage.Text = Localization.Get("main.emptyChooseMessage");
         }
         else if (!hasResults)
         {
-            EmptyTitle.Text = "No encontramos esa carpeta";
-            EmptyMessage.Text = "Probá con otra parte del nombre o de su ubicación.";
+            EmptyTitle.Text = Localization.Get("main.emptyNoMatchTitle");
+            EmptyMessage.Text = Localization.Get("main.emptyNoMatchMessage");
         }
         else
         {
-            EmptyTitle.Text = "Escribí para buscar";
-            EmptyMessage.Text = "Los resultados aparecen acá debajo.";
+            EmptyTitle.Text = Localization.Get("main.emptyTypeTitle");
+            EmptyMessage.Text = Localization.Get("main.emptyTypeMessage");
         }
     }
 
-    private async void Folder_MouseEnter(object sender, System.Windows.Input.MouseEventArgs e)
+    private void KeepWindowOnScreen()
+    {
+        if (!IsVisible) return;
+        UpdateLayout();
+        var workArea = SystemParameters.WorkArea;
+        const double edge = 16;
+        if (Left + ActualWidth > workArea.Right - edge)
+            Left = Math.Max(workArea.Left + edge, workArea.Right - ActualWidth - edge);
+        if (Top + ActualHeight > workArea.Bottom - edge)
+            Top = Math.Max(workArea.Top + edge, workArea.Bottom - ActualHeight - edge);
+    }
+
+    private void Folder_MouseEnter(object sender, System.Windows.Input.MouseEventArgs e)
     {
         if (sender is not FrameworkElement element || element.DataContext is not FolderEntry folder) return;
+        _ = LoadFolderPreviewAsync(folder);
+    }
+
+    private async Task LoadFolderPreviewAsync(FolderEntry folder)
+    {
         _previewCts?.Cancel();
         _previewCts = new CancellationTokenSource();
         var token = _previewCts.Token;
-        SetPreviewState(new PreviewState { Folder = folder, Message = "Buscando fotos…" });
+        SetPreviewState(new PreviewState { Folder = folder, Message = Localization.Get("main.previewLoading") });
 
         try
         {
@@ -254,10 +321,10 @@ public partial class MainWindow : Window
     private void SetPreviewState(PreviewState state)
     {
         _previewState = state;
-        PreviewTitle.Text = state.Folder?.Name ?? "Elegí una carpeta";
-        PreviewPath.Text = state.Folder?.LocationLabel ?? "Las fotos aparecen acá";
+        PreviewTitle.Text = state.Folder?.Name ?? Localization.Get("main.previewChoose");
+        PreviewPath.Text = state.Folder?.LocationLabel ?? Localization.Get("main.previewPhotosHere");
         PreviewMessage.Text = state.Message ?? string.Empty;
-        PreviewMessage.Visibility = state.Images.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        PreviewMessage.Visibility = Visibility.Collapsed;
         PreviewThumbs.ItemsSource = state.Images;
         OpenPreviewButton.IsEnabled = state.Folder is not null;
     }
@@ -297,6 +364,7 @@ public partial class MainWindow : Window
             var dialog = new SettingsWindow(this);
             if (dialog.ShowDialog() != true || dialog.Result is null) return;
             App.Settings.Save(dialog.Result);
+            _hotkeyHandled = false;
             App.Index.ClearPreviewCache();
             RefreshIndexAsync();
         }
@@ -389,23 +457,24 @@ public partial class MainWindow : Window
 
     private IntPtr KeyboardHookCallback(int code, IntPtr wParam, IntPtr lParam)
     {
-        if (code >= 0)
+        if (code >= 0 && !_suppressDeactivate)
         {
             var virtualKey = Marshal.ReadInt32(lParam);
             var message = wParam.ToInt32();
-            var isSpaceDown = virtualKey == VkSpace && (message == WmKeyDown || message == WmSysKeyDown);
-            var isSpaceUp = virtualKey == VkSpace && (message == WmKeyUp || message == WmSysKeyUp);
+            var hotkey = HotkeyGesture.FromSettings(App.Settings.Current);
+            var isHotkeyDown = virtualKey == hotkey.VirtualKey && (message == WmKeyDown || message == WmSysKeyDown);
+            var isHotkeyUp = virtualKey == hotkey.VirtualKey && (message == WmKeyUp || message == WmSysKeyUp);
 
-            if (isSpaceDown && !_spaceHandled && IsAltDown())
+            if (isHotkeyDown && !_hotkeyHandled && HotkeyModifiersMatch(hotkey.Modifiers))
             {
-                _spaceHandled = true;
+                _hotkeyHandled = true;
                 Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(ShowSearchWindow));
                 return new IntPtr(1);
             }
 
-            if (isSpaceUp && _spaceHandled)
+            if (isHotkeyUp && _hotkeyHandled)
             {
-                _spaceHandled = false;
+                _hotkeyHandled = false;
                 return new IntPtr(1);
             }
         }
@@ -431,9 +500,27 @@ public partial class MainWindow : Window
         || message == NativeMethods.WmRightButtonDown
         || message == NativeMethods.WmMiddleButtonDown;
 
-    private static bool IsAltDown() =>
-        (NativeMethods.GetAsyncKeyState(VkLeftAlt) & 0x8000) != 0
-        || (NativeMethods.GetAsyncKeyState(VkRightAlt) & 0x8000) != 0;
+    private static bool HotkeyModifiersMatch(HotkeyModifiers expected) =>
+        GetPressedHotkeyModifiers() == expected
+        && !IsVirtualKeyDown(VkLeftWindows)
+        && !IsVirtualKeyDown(VkRightWindows);
+
+    private static bool IsAnyHotkeyModifierDown() =>
+        GetPressedHotkeyModifiers() != HotkeyModifiers.None
+        || IsVirtualKeyDown(VkLeftWindows)
+        || IsVirtualKeyDown(VkRightWindows);
+
+    private static HotkeyModifiers GetPressedHotkeyModifiers()
+    {
+        var modifiers = HotkeyModifiers.None;
+        if (IsVirtualKeyDown(VkLeftControl) || IsVirtualKeyDown(VkRightControl)) modifiers |= HotkeyModifiers.Control;
+        if (IsVirtualKeyDown(VkLeftAlt) || IsVirtualKeyDown(VkRightAlt)) modifiers |= HotkeyModifiers.Alt;
+        if (IsVirtualKeyDown(VkLeftShift) || IsVirtualKeyDown(VkRightShift)) modifiers |= HotkeyModifiers.Shift;
+        return modifiers;
+    }
+
+    private static bool IsVirtualKeyDown(int virtualKey) =>
+        (NativeMethods.GetAsyncKeyState(virtualKey) & 0x8000) != 0;
 
     private static class NativeMethods
     {

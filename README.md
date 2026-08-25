@@ -12,13 +12,13 @@
 
 ## La idea
 
-FolderLens está pensado para esas bibliotecas llenas de carpetas con nombres parecidos: referencias, proyectos, recursos, fotos o material de trabajo. En vez de abrir una carpeta tras otra, presionás `Alt + Espacio`, escribís y reconocés el contenido de un vistazo.
+FolderLens está pensado para esas bibliotecas llenas de carpetas con nombres parecidos: referencias, proyectos, recursos, fotos o material de trabajo. En vez de abrir una carpeta tras otra, usás el atajo global —`Alt + Espacio` por defecto—, escribís y reconocés el contenido de un vistazo. La interfaz detecta automáticamente el idioma de Windows y ofrece español, inglés, chino mandarín, hindi, francés, árabe, bengalí, portugués, ruso e indonesio.
 
 > El hero de arriba es una imagen conceptual de presentación. La aplicación real es una ventana WPF nativa y liviana.
 
 ## Qué hace
 
-- **Paleta flotante:** `Alt + Espacio` abre solo el buscador, listo para escribir.
+- **Paleta flotante:** un atajo global configurable abre solo el buscador, listo para escribir, sin instalar servicios adicionales.
 - **Búsqueda acotada:** revisa únicamente las carpetas elegidas en Configuración.
 - **Vista previa visual:** al pasar por un resultado, carga hasta cinco fotos de esa carpeta.
 - **Apertura directa:** un clic sobre el resultado abre la carpeta en el Explorador.
@@ -42,7 +42,7 @@ FolderLens está pensado para esas bibliotecas llenas de carpetas con nombres pa
    dotnet run
    ```
 
-4. Abrí **Configuración**, agregá tus carpetas raíz y presioná `Alt + Espacio`.
+4. Abrí **Configuración**, agregá tus carpetas raíz, elegí el atajo que prefieras y usalo para buscar.
 
 ## Publicar un ejecutable
 
@@ -60,13 +60,15 @@ El ejecutable publicado requiere el runtime de escritorio .NET 8. Para una versi
 | Índice | Escaneo en segundo plano de las raíces configuradas |
 | Caché | `%APPDATA%\\FolderLens` |
 | Fotos | JPG, JPEG, PNG, WEBP, BMP, GIF, TIF y TIFF |
-| Atajo | Hook global de teclado para `Alt + Espacio` |
+| Atajo | Hook global configurable; `Alt + Espacio` es el valor predeterminado |
+| Idioma | Detección automática de Windows con 10 catálogos locales y fallback a español |
 
 ## Estructura
 
 ```text
 MainWindow.xaml(.cs)       Paleta, bandeja, atajo y resultados
-SettingsWindow.xaml(.cs)   Configuración de carpetas
+SettingsWindow.xaml(.cs)   Configuración de carpetas, inicio, idioma detectado y atajo
+Localization/*.cs           Detección de cultura y catálogos de idiomas
 FolderIndexService.cs      Índice y miniaturas perezosas
 IndexCacheStore.cs         Caché local del índice
 SettingsStore.cs           Preferencias de la aplicación

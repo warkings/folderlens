@@ -48,7 +48,7 @@ public sealed class FolderIndexService : IDisposable
         {
             token.ThrowIfCancellationRequested();
             var relative = string.Equals(root, path, StringComparison.OrdinalIgnoreCase)
-                ? "Carpeta configurada"
+                ? Localization.Get("folder.configured")
                 : Path.GetRelativePath(root, path);
             target.Add(new FolderEntry
             {
@@ -84,7 +84,7 @@ public sealed class FolderIndexService : IDisposable
             }
         }
 
-        return CreateState(folder, images, images.Count == 0 ? "No hay fotos en esta carpeta" : null);
+        return CreateState(folder, images, images.Count == 0 ? Localization.Get("main.noPhotosFolder") : null);
     }
 
     private static IReadOnlyList<ThumbnailItem> LoadImages(string folderPath, CancellationToken token)
@@ -102,7 +102,7 @@ public sealed class FolderIndexService : IDisposable
                     var bitmap = new BitmapImage();
                     bitmap.BeginInit();
                     bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                    bitmap.DecodePixelWidth = 172;
+                    bitmap.DecodePixelWidth = 320;
                     bitmap.UriSource = new Uri(file);
                     bitmap.EndInit();
                     bitmap.Freeze();

@@ -35,6 +35,10 @@ public sealed class SettingsStore
             .Where(Directory.Exists)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
+
+        var hotkey = HotkeyGesture.FromSettings(Current);
+        Current.OpenHotkeyVirtualKey = hotkey.VirtualKey;
+        Current.OpenHotkeyModifiers = hotkey.Modifiers;
     }
 
     public void Save(AppSettings settings)
