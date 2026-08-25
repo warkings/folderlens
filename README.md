@@ -20,7 +20,8 @@ FolderLens está pensado para esas bibliotecas llenas de carpetas con nombres pa
 
 La versión estable más reciente incluye el ejecutable listo para Windows:
 
-[**Descargar FolderLens.exe**](https://github.com/warkings/folderlens/releases/latest/download/FolderLens.exe)
+- [**FolderLens.exe — versión liviana**](https://github.com/warkings/folderlens/releases/latest/download/FolderLens.exe) — requiere .NET 8 Desktop.
+- [**FolderLens-win-x64.exe — versión autónoma**](https://github.com/warkings/folderlens/releases/latest/download/FolderLens-win-x64.exe) — no requiere instalar .NET.
 
 También podés ver las notas y versiones anteriores en [Releases](https://github.com/warkings/folderlens/releases).
 
