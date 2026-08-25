@@ -41,6 +41,16 @@
             <GradientStop Color="#1566E4CF" Offset="0.45" />
             <GradientStop Color="#0066E4CF" Offset="1" />
         </RadialGradientBrush>
+        <RadialGradientBrush x:Key="ShellWarmGlowBrush" Center="0.03,0.04" GradientOrigin="0.03,0.04" RadiusX="0.76" RadiusY="0.92">
+            <GradientStop Color="#45FFB46A" Offset="0" />
+            <GradientStop Color="#18FFB46A" Offset="0.34" />
+            <GradientStop Color="#00FFB46A" Offset="1" />
+        </RadialGradientBrush>
+        <RadialGradientBrush x:Key="ShellMintGlowBrush" Center="0.97,0.96" GradientOrigin="0.97,0.96" RadiusX="0.76" RadiusY="0.92">
+            <GradientStop Color="#3266E4CF" Offset="0" />
+            <GradientStop Color="#1266E4CF" Offset="0.38" />
+            <GradientStop Color="#0066E4CF" Offset="1" />
+        </RadialGradientBrush>
         <Style TargetType="TextBlock">
             <Setter Property="FontFamily" Value="Segoe UI Variable Text, Segoe UI" />
             <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
