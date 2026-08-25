@@ -26,10 +26,10 @@ The latest release includes both a small framework-dependent build and a standal
 
 La versión estable más reciente incluye el ejecutable listo para Windows:
 
-- [**FolderLens.exe — versión liviana actualizada**](https://github.com/warkings/folderlens/raw/refs/heads/main/downloads/FolderLens.exe) — requiere .NET 8 Desktop.
-- [**FolderLens-win-x64.exe — versión autónoma**](https://github.com/warkings/folderlens/releases/latest/download/FolderLens-win-x64.exe) — no requiere instalar .NET.
+- [**FolderLens-1.0.1.exe — versión liviana**](https://github.com/warkings/folderlens/raw/refs/heads/main/downloads/FolderLens-1.0.1.exe) — requiere .NET 8 Desktop.
+- [**FolderLens-1.0.1-win-x64.exe — versión autónoma**](https://github.com/warkings/folderlens/releases/download/v1.0.1/FolderLens-1.0.1-win-x64.exe) — no requiere instalar .NET.
 
-La compilación liviana también queda guardada en `downloads/FolderLens.exe` para que el enlace directo siempre apunte al último código publicado.
+La compilación liviana queda guardada con su versión en `downloads/FolderLens-1.0.1.exe`. Las versiones anteriores se conservan en [Releases](https://github.com/warkings/folderlens/releases).
 
 También podés ver las notas y versiones anteriores en [Releases](https://github.com/warkings/folderlens/releases).
 
