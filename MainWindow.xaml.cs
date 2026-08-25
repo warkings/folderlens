@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Threading;
@@ -167,6 +168,9 @@ public partial class MainWindow : Window
             return null;
         NativeMethods.ActivateSourceWindow(sourceWindow);
         await Task.Delay(40);
+        var directText = TryReadSelectedTextFromAccessibility(sourceWindow);
+        if (directText is not null) return directText;
+
         System.Windows.IDataObject? previousClipboard = null;
         try
         {
@@ -202,6 +206,33 @@ public partial class MainWindow : Window
                 return NormalizeSelectedText(System.Windows.Clipboard.GetText(System.Windows.TextDataFormat.UnicodeText));
             await Task.Delay(25);
         }
+        return null;
+    }
+    private static string? TryReadSelectedTextFromAccessibility(IntPtr sourceWindow)
+    {
+        try
+        {
+            var root = AutomationElement.FromHandle(sourceWindow);
+            var focused = AutomationElement.FocusedElement;
+            var candidates = new List<AutomationElement>();
+            if (focused is not null) candidates.Add(focused);
+            if (root is not null && !ReferenceEquals(root, focused)) candidates.Add(root);
+
+            foreach (var candidate in candidates)
+            {
+                if (!candidate.TryGetCurrentPattern(TextPattern.Pattern, out var patternObject)
+                    || patternObject is not TextPattern textPattern)
+                    continue;
+
+                var ranges = textPattern.GetSelection();
+                var text = string.Join(string.Empty, ranges.Select(range => range.GetText(-1)));
+                var normalized = NormalizeSelectedText(text);
+                if (normalized is not null) return normalized;
+            }
+        }
+        catch (ElementNotAvailableException) { }
+        catch (InvalidOperationException) { }
+        catch (COMException) { }
         return null;
     }
     private static string? NormalizeSelectedText(string? text)
