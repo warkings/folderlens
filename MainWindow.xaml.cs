@@ -182,7 +182,18 @@ public partial class MainWindow : Window
 
             System.Windows.Clipboard.Clear();
             NativeMethods.SendCtrlC(useLegacyKeybdEvent: true);
-            return await WaitForClipboardTextAsync();
+            var fallbackText = await WaitForClipboardTextAsync();
+            if (fallbackText is not null) return fallbackText;
+
+            try
+            {
+                Forms.SendKeys.SendWait("^c");
+                return await WaitForClipboardTextAsync();
+            }
+            catch (InvalidOperationException)
+            {
+                return null;
+            }
         }
         catch
         {
@@ -217,6 +228,14 @@ public partial class MainWindow : Window
             var candidates = new List<AutomationElement>();
             if (focused is not null) candidates.Add(focused);
             if (root is not null && !ReferenceEquals(root, focused)) candidates.Add(root);
+
+            if (root is not null)
+            {
+                var document = root.FindFirst(
+                    TreeScope.Descendants,
+                    new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Document));
+                if (document is not null && !candidates.Contains(document)) candidates.Add(document);
+            }
 
             foreach (var candidate in candidates)
             {
