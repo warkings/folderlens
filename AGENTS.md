@@ -34,7 +34,13 @@ No automated test project or coverage requirement exists yet. Before submitting 
 
 ## Release Versioning
 
-Every user-facing improvement increments the semantic version in FolderLens.csproj (for example, 1.0.1 to 1.0.2). Update Version, AssemblyVersion, FileVersion, and InformationalVersion together. Publish versioned assets such as FolderLens-1.0.2.exe and FolderLens-1.0.2-win-x64.exe, create the matching v1.0.2 Git tag and GitHub release, and keep the lightweight versioned file under downloads/.
+Current release: `1.0.1`.
+
+Every user-facing improvement must:
+1. Increment the version in FolderLens.csproj (1.0.1 -> 1.0.2).
+2. Update Version, AssemblyVersion, FileVersion, and InformationalVersion together.
+3. Publish `FolderLens-<version>.exe` and `FolderLens-<version>-win-x64.exe`.
+4. Store the lightweight executable under `downloads/`, create the matching `v<version>` tag and GitHub Release, and keep previous releases available.
 
 ## Commit & Pull Request Guidelines
 
