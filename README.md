@@ -16,6 +16,14 @@ FolderLens está pensado para esas bibliotecas llenas de carpetas con nombres pa
 
 > El hero de arriba es una imagen conceptual de presentación. La aplicación real es una ventana WPF nativa y liviana.
 
+## Descargar
+
+La versión estable más reciente incluye el ejecutable listo para Windows:
+
+[**Descargar FolderLens.exe**](https://github.com/warkings/folderlens/releases/latest/download/FolderLens.exe)
+
+También podés ver las notas y versiones anteriores en [Releases](https://github.com/warkings/folderlens/releases).
+
 ## Qué hace
 
 - **Paleta flotante:** un atajo global configurable abre solo el buscador, listo para escribir, sin instalar servicios adicionales.
